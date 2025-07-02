@@ -4,7 +4,7 @@ import { Button, Input, RTE, Select } from "..";
 import appwriteService from "../../appwrite/config";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-
+import RichTextEditor from "../RichTextEditor";
 export default function PostForm({ post }) {
   const { register, handleSubmit, watch, setValue, control, getValues } =
     useForm({
@@ -96,10 +96,11 @@ export default function PostForm({ post }) {
             });
           }}
         />
-        <RTE
+
+        <RichTextEditor
           label="Content :"
           name="content"
-          control={control}
+          control={{ ...control, setValue }}
           defaultValue={getValues("content")}
         />
       </div>
@@ -111,6 +112,7 @@ export default function PostForm({ post }) {
           accept="image/png, image/jpg, image/jpeg, image/gif"
           {...register("image", { required: !post })}
         />
+
         {post && (
           <div className="w-full mb-4">
             <img
