@@ -23,10 +23,30 @@ export default function RichTextEditor({
             init={{
               height: 500,
               menubar: true,
+              // plugins: [
+              //   "advlist autolink lists link image charmap preview anchor",
+              //   "searchreplace visualblocks code fullscreen",
+              //   "insertdatetime media table paste help wordcount",
+              // ],
               plugins: [
-                "advlist autolink lists link image charmap preview anchor",
-                "searchreplace visualblocks code fullscreen",
-                "insertdatetime media table paste help wordcount",
+                "advlist",
+                "autolink",
+                "lists",
+                "link",
+                "image",
+                "charmap",
+                "preview",
+                "anchor",
+                "searchreplace",
+                "visualblocks",
+                "code",
+                "fullscreen",
+                "insertdatetime",
+                "media",
+                "table",
+                "paste",
+                "help",
+                "wordcount",
               ],
               toolbar:
                 "undo redo | blocks | bold italic forecolor | " +

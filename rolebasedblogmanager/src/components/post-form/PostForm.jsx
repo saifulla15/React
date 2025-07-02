@@ -1,11 +1,12 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button, Input, RTE, Select } from "..";
+import { Button, Input, Select } from "..";
 import appwriteService from "../../appwrite/config";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import RichTextEditor from "../RichTextEditor";
 export default function PostForm({ post }) {
+  const [previewImage, setPreviewImage] = useState(null);
   const { register, handleSubmit, watch, setValue, control, getValues } =
     useForm({
       defaultValues: {
@@ -20,38 +21,65 @@ export default function PostForm({ post }) {
   const userData = useSelector((state) => state.auth.userData);
 
   const submit = async (data) => {
-    if (post) {
-      const file = data.image[0]
-        ? await appwriteService.uploadFile(data.image[0])
-        : null;
+    try {
+      if (post) {
+        const file = data.image[0]
+          ? await appwriteService.uploadFile(data.image[0])
+          : null;
 
-      if (file) {
-        appwriteService.deleteFile(post.featuredImage);
-      }
+        if (file) {
+          await appwriteService.deleteFile(post.featuredimage);
+        }
 
-      const dbPost = await appwriteService.updatePost(post.$id, {
-        ...data,
-        featuredImage: file ? file.$id : undefined,
-      });
-
-      if (dbPost) {
-        navigate(`/post/${dbPost.$id}`);
-      }
-    } else {
-      const file = await appwriteService.uploadFile(data.image[0]);
-
-      if (file) {
-        const fileId = file.$id;
-        data.featuredImage = fileId;
-        const dbPost = await appwriteService.createPost({
+        const dbPost = await appwriteService.updatePost(post.$id, {
           ...data,
-          userId: userData.$id,
+          featuredimage: file ? file.$id : post.featuredimage,
         });
 
         if (dbPost) {
           navigate(`/post/${dbPost.$id}`);
         }
+      } else {
+        const imageFile = data.image?.[0];
+
+        if (!imageFile) {
+          alert("Please upload a featured image.");
+          return;
+        }
+
+        const file = await appwriteService.uploadFile(imageFile);
+
+        if (!file) {
+          alert("Image upload failed. Please try again.");
+          return;
+          console.log("Uploaded image file:", file);
+        }
+
+        const fileId = file.$id;
+        const dbPost = await appwriteService.createPost({
+          title: data.title,
+          slug: data.slug,
+          content: data.content,
+          status: data.status,
+          featuredimage: fileId,
+          userid: userData.$id,
+        });
+
+        // if (dbPost) {
+        //   navigate(`/post/${dbPost.$id}`);
+        // }
+        if (dbPost && dbPost.$id) {
+          navigate(`/post/${dbPost.$id}`);
+        } else {
+          console.error("Create post failed: ", dbPost);
+          alert(
+            "Post creation failed. Please check your inputs and try again."
+          );
+        }
       }
+    } catch (error) {
+      console.error("Post submission failed:", error);
+      alert("Something went wrong. Please try again.");
     }
   };
 
@@ -66,7 +94,7 @@ export default function PostForm({ post }) {
     return "";
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === "title") {
         setValue("slug", slugTransform(value.title), { shouldValidate: true });
@@ -75,6 +103,22 @@ export default function PostForm({ post }) {
 
     return () => subscription.unsubscribe();
   }, [watch, slugTransform, setValue]);
+
+  // add
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name === "image" && value.image?.[0]) {
+        const file = value.image[0];
+        const url = URL.createObjectURL(file);
+        setPreviewImage(url);
+
+        // Cleanup the object URL when component unmounts or file changes
+        return () => URL.revokeObjectURL(url);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   return (
     <form onSubmit={handleSubmit(submit)} className="flex flex-wrap">
@@ -96,7 +140,6 @@ export default function PostForm({ post }) {
             });
           }}
         />
-
         <RichTextEditor
           label="Content :"
           name="content"
@@ -112,22 +155,25 @@ export default function PostForm({ post }) {
           accept="image/png, image/jpg, image/jpeg, image/gif"
           {...register("image", { required: !post })}
         />
-
-        {post && (
-          <div className="w-full mb-4">
+        <div className="w-full mb-4">
+          {previewImage ? (
+            <img src={previewImage} alt="Preview" className="rounded-lg" />
+          ) : post?.featuredimage ? (
             <img
-              src={appwriteService.getFilePreview(post.featuredImage)}
+              src={appwriteService.getFilePreview(post.featuredimage)}
               alt={post.title}
               className="rounded-lg"
             />
-          </div>
-        )}
+          ) : null}
+        </div>
+
         <Select
           options={["active", "inactive"]}
           label="Status"
           className="mb-4"
           {...register("status", { required: true })}
         />
+
         <Button
           type="submit"
           bgColor={post ? "bg-green-500" : undefined}
